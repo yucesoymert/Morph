@@ -68,7 +68,6 @@ enum WallpaperKind: CaseIterable, Identifiable {
         }
     }
 
-    // ponytail: Equinox (MIT) tip images as placeholders; the user swaps in their own.
     var tipImage: String {
         switch self {
         case .time: "TimeTip"

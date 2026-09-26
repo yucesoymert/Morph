@@ -73,8 +73,8 @@ Diğer modlar (v1 dışı):
 - [x] TIPS kartı (açılışta fade + hafif spring büyüme; sheet değil, overlay: sheet pencereden büyüyemiyor ve dışarı
       tıklayınca kapanmıyor): karşılamada tür seçilince ve ? ile açılır, dışarı
       tıklayınca / Esc ile kapanır; 420×400, sol üstte buzlu TIPS rozeti. Editör
-      min yükseklik 420 ki kart her türde sığsın. Görseller Equinox'tan (MIT) placeholder — kullanıcı kendi
-      görselini koyacak (`TimeTip` / `AppearanceTip` imageset)
+      min yükseklik 420 ki kart her türde sığsın. Görseller kullanıcının kendi görselleri
+      (`TimeTip` / `AppearanceTip` imageset, 1672×941 JPEG)
 - [x] DayBar açık temada: sabah = slot açık grisi (0.97), akşam = orta gri (0.72)
 - [x] Hakkında penceresi (özel, `AboutView`): ikon, açıklama, Sürüm/Build,
       İkonu değiştir, en altta copyright. Ayarlar (⌘,): uygulama ikonu seçimi —
@@ -90,6 +90,19 @@ Diğer modlar (v1 dışı):
       Görünüm (`apr`) türü masaüstünde; toolbar'daki glass segmented seçici
       ve ⋯/? grubu (ImageRenderer toolbar çizmiyor)
 
+## Dağıtım (DMG)
+
+Developer ID yok → ad-hoc imza; alan kişi ilk açılışta Gatekeeper uyarısını
+Sistem Ayarları › Gizlilik ve Güvenlik › "Yine de Aç" ile geçer.
+`-destination 'generic/platform=macOS'` şart, yoksa yalnız arm64 çıkıyor.
+
+```sh
+D=/tmp/morph-rel; rm -rf $D; xcodebuild -project Morph.xcodeproj -scheme Morph \
+  -configuration Release -destination 'generic/platform=macOS' -derivedDataPath $D build
+mkdir $D/dmg && cp -R $D/Build/Products/Release/Morph.app $D/dmg/ && ln -s /Applications $D/dmg/
+hdiutil create -volname Morph -srcfolder $D/dmg -ov -format UDZO ~/Desktop/Morph-1.0.dmg
+```
+
 ## Çalışma notu
 
 Kullanıcı Morph'u Xcode'dan çalıştırırken GUI otomasyonu (System Events,
@@ -98,9 +111,8 @@ için ImageRenderer ile ekran dışı çizim kullan.
 
 ## Sonraya bırakılanlar
 
-- Açık kaynak yapmadan önce: LICENSE dosyası seç; TIPS görselleri Equinox'tan
-  (MIT) — ya kendi görsellerinle değiştir ya da Equinox'un MIT lisans metnini
-  ekle. Repo: github.com/yucesoymert/Morph (şimdilik private).
+- Açık kaynak yapmadan önce: LICENSE dosyası seç (TIPS görselleri artık
+  kendimizin, Equinox lisansı gerekmiyor). Repo: github.com/yucesoymert/Morph (şimdilik private).
 
 - 2'den fazla görsel ve özel saatler (`DatePicker`).
 - Güneş bazlı mod (`solar`) — saat bazlı çalıştıktan sonra.

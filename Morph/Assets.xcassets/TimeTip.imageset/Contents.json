@@ -1,8 +1,4 @@
 {
-  "images" : [
-    { "filename" : "TimeTip@1x.png", "idiom" : "universal", "scale" : "1x" },
-    { "filename" : "TimeTip@2x.png", "idiom" : "universal", "scale" : "2x" },
-    { "filename" : "TimeTip@3x.png", "idiom" : "universal", "scale" : "3x" }
-  ],
+  "images" : [ { "filename" : "TimeTip.jpg", "idiom" : "universal" } ],
   "info" : { "author" : "xcode", "version" : 1 }
 }

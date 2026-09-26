@@ -72,7 +72,7 @@ swiftc -o /tmp/heiccheck Morph/HEICWriter.swift Checks/main.swift && /tmp/heicch
 
 ## Credits
 
-- The images on the Tips cards come from [Equinox](https://github.com/rlxone/Equinox) by rlxone (MIT). Equinox also inspired the result screen.
+- [Equinox](https://github.com/rlxone/Equinox) by rlxone inspired the Tips cards and the result screen.
 - [wallpapper](https://github.com/mczachurski/wallpapper) by mczachurski is the reference for the HEIC metadata format.
 - The README screenshots are rendered from the app's own views with generated sample images.
 
