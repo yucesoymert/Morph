@@ -98,6 +98,10 @@ için ImageRenderer ile ekran dışı çizim kullan.
 
 ## Sonraya bırakılanlar
 
+- Açık kaynak yapmadan önce: LICENSE dosyası seç; TIPS görselleri Equinox'tan
+  (MIT) — ya kendi görsellerinle değiştir ya da Equinox'un MIT lisans metnini
+  ekle. Repo: github.com/yucesoymert/Morph (şimdilik private).
+
 - 2'den fazla görsel ve özel saatler (`DatePicker`).
 - Güneş bazlı mod (`solar`) — saat bazlı çalıştıktan sonra.
 - Mevcut `.heic` dosyasını açıp düzenleme.
