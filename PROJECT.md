@@ -55,7 +55,7 @@ Diğer modlar (v1 dışı):
 - [x] `HEICWriter`: `[CGImage]` + zaman listesi → `.heic` (saf fonksiyon)
 - [x] Minimal self-check: üretilen dosyayı `CGImageSource` ile geri okuyup
       görsel sayısını ve `h24` metadata'sını doğrula —
-      `swiftc -o /tmp/heiccheck Morph/HEICWriter.swift Checks/main.swift && /tmp/heiccheck`
+      `swiftc -o /tmp/heiccheck Morph/HEICWriter.swift Morph/Cycle.swift Checks/main.swift && /tmp/heiccheck`
 - [x] UI: iki bırakma alanı (Sabah / Akşam)
 - [x] Oluştur → `~/Pictures/Morph/<ad>.heic` → sonuç ekranı (Kaydet / Ayarla / Paylaş / Yeni / Kapat)
 - [x] Açılışta dikey karşılama ekranı + tür seçimi (Saat / Görünüm)
@@ -84,7 +84,15 @@ Diğer modlar (v1 dışı):
       kırılıyordu). Her açılışta yeniden uygulanır.
 - [x] Sonuç ekranı: iki görsel yan yana (dosyanın kendisinden, arka planda),
       "Yeni" onay ister
+- [x] Saat türüne **Işık Döngüsü** modu (Sabah / Akşam ↔ Işık Döngüsü): 2..N görsel,
+      her biri kendi saatinde. Şeritte "+" ile çoklu ekleme (yeni görsel en büyük boş
+      aralığın ortasına), timeline'da tutamaç sürükleme (5 dk adım), çubuğa tıklayınca
+      seçili görsel oraya, saat alanından elle yazma. Açık/koyu (`ap`) = 12:00'ye ve
+      00:00'a en yakın görseller. Kendi TIPS kartı (`CycleTip`, "Anladım"): moda ilk
+      geçişte ve ? ile açılır; TIPS kartları artık `Tip` değeri (görsel/başlık/metin/buton). Dosyada görseller saate göre sıralı. Saf yardımcılar
+      `Morph/Cycle.swift`, self-check'te.
 - [ ] 07:00 ve 19:00 geçişlerini gözle doğrula
+- [ ] Işık Döngüsü: 4+ görselli dosya masaüstünde saatinde geçiyor mu
 - [ ] Kullanıcı denemeli: toolbar toggle görünümü, sonuç ekranında "Yeni"
       (çökme düzeltildi), slot başlığı fade, key'de görsel noktaları,
       Görünüm (`apr`) türü masaüstünde; toolbar'daki glass segmented seçici
@@ -114,7 +122,6 @@ için ImageRenderer ile ekran dışı çizim kullan.
 - Açık kaynak yapmadan önce: LICENSE dosyası seç (TIPS görselleri artık
   kendimizin, Equinox lisansı gerekmiyor). Repo: github.com/yucesoymert/Morph (şimdilik private).
 
-- 2'den fazla görsel ve özel saatler (`DatePicker`).
 - Güneş bazlı mod (`solar`) — saat bazlı çalıştıktan sonra.
 - Mevcut `.heic` dosyasını açıp düzenleme.
 - İmzalama, sandbox, App Store — yalnız kişisel kullanım için gerekmiyor.

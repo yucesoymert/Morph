@@ -5,12 +5,12 @@ import UniformTypeIdentifiers
 enum HEICWriter {
     /// Writes a dynamic desktop `.heic`. With `times` it is time-based ("h24"): fractions of
     /// the day (0.0–1.0), one per image, e.g. 0.5 = 12:00. Without, it follows light/dark
-    /// mode ("apr"). Either way light mode is the first image and dark mode the last.
-    static func write(_ images: [CGImage], times: [Double]? = nil, to url: URL) throws {
+    /// mode ("apr"). Light/Dark Mode shows `appearance` (image indices); default first and last.
+    static func write(_ images: [CGImage], times: [Double]? = nil,
+                      appearance: (light: Int, dark: Int)? = nil, to url: URL) throws {
         precondition(!images.isEmpty && images.count == (times?.count ?? images.count))
 
-        // ponytail: light = first image, dark = last; add parameters when users need to pick
-        let appearance = ["l": 0, "d": images.count - 1]
+        let appearance = ["l": appearance?.light ?? 0, "d": appearance?.dark ?? images.count - 1]
         let key: String
         let value: Any
         if let times {
