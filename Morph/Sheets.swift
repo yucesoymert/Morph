@@ -12,6 +12,7 @@ struct ResultSheet: View {
     @State private var failed = false
     @State private var confirmingNew = false
     @State private var previews: [NSImage] = []
+    @State private var count = 2
     private let size: String
 
     init(url: URL, kind: WallpaperKind, onNew: @escaping () -> Void) {
@@ -63,7 +64,7 @@ struct ResultSheet: View {
 
             HStack(spacing: 8) {
                 tag("\(kind.title) bazlı")
-                tag("2 görsel")
+                tag("\(count) görsel")
                 tag(size)
             }
 
@@ -97,13 +98,16 @@ struct ResultSheet: View {
             Text("Seçtiğiniz görseller temizlenir. Oluşturulan duvar kağıdı Resimler › Morph klasöründe kalır.")
         }
         .task {
-            // Both images from the finished file, light then dark, like System Settings' split thumbnails.
-            // Off the main thread: a synchronous HEIC decode here made the UI thread wait on ImageIO's
-            // default-QoS workers (Xcode's priority-inversion warning), and init reruns on every parent redraw.
+            // Every image from the finished file in file order (light→dark, or by hour), as side-by-side
+            // strips like System Settings' thumbnails. Off the main thread: a synchronous HEIC decode
+            // here made the UI thread wait on ImageIO's default-QoS workers (Xcode's priority-inversion
+            // warning), and init reruns on every parent redraw.
             let url = url
             let images = await Task.detached(priority: .userInitiated) {
-                (0..<2).compactMap { makePreview(of: url, index: $0) }
+                let total = CGImageSourceCreateWithURL(url as CFURL, nil).map(CGImageSourceGetCount) ?? 0
+                return (0..<total).compactMap { makePreview(of: url, index: $0) }
             }.value
+            count = images.count
             previews = images.map { NSImage(cgImage: $0, size: .zero) }
         }
     }
@@ -261,7 +265,7 @@ private struct KindRow: View {
 
 /// What a kind does, shown when it's picked and from the editor's ? button.
 struct TipsCard: View {
-    let kind: WallpaperKind
+    let tip: Tip
     let onClose: () -> Void
     @State private var shown = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -269,7 +273,7 @@ struct TipsCard: View {
     var body: some View {
         VStack(spacing: 0) {
             // Fixed frame + fill: the photo always covers the whole top, whatever the window height.
-            Image(kind.tipImage)
+            Image(tip.image)
                 .resizable()
                 .scaledToFill()
                 .frame(width: 420, height: 236)
@@ -285,8 +289,8 @@ struct TipsCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("\(kind.title) duvar kağıdı").font(.title2.bold())
-                Text(kind.detail)
+                Text(tip.title).font(.title2.bold())
+                Text(tip.detail)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -296,7 +300,7 @@ struct TipsCard: View {
             Divider()
 
             Button(action: onClose) {
-                Text("Başla").padding(.horizontal, 16)
+                Text(tip.button).padding(.horizontal, 16)
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)

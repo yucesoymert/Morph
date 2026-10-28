@@ -17,6 +17,7 @@
 Morph writes a single `.heic` file that macOS's own Dynamic Desktop reads. Nothing keeps running in the background: macOS switches the picture itself.
 
 - **Time wallpaper:** a morning image from 07:00 and an evening image from 19:00. A timeline shows which picture is on screen at each hour.
+- **Işık Döngüsü (light cycle):** as many images as you like, each at its own time. Drag them along the timeline, click the timeline to place the selected one, or type the time.
 - **Appearance wallpaper:** one image for Light Mode and one for Dark Mode.
 - Drag and drop or pick PNG, JPEG, TIFF or HEIC files.
 - When the file is ready, save it, set it as the wallpaper on every display, share it, or drag it out.
@@ -67,7 +68,7 @@ macOS doesn't wrap the time list past midnight: before the first entry it shows 
 All of this lives in [`Morph/HEICWriter.swift`](Morph/HEICWriter.swift). A self-check writes a file and reads it back:
 
 ```sh
-swiftc -o /tmp/heiccheck Morph/HEICWriter.swift Checks/main.swift && /tmp/heiccheck
+swiftc -o /tmp/heiccheck Morph/HEICWriter.swift Morph/Cycle.swift Checks/main.swift && /tmp/heiccheck
 ```
 
 ## Credits
