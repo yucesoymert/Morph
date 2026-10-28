@@ -9,17 +9,15 @@ func snap(_ hour: Double, minutes: Int = 5) -> Double {
     return (rounded.truncatingRemainder(dividingBy: 24) + 24).truncatingRemainder(dividingBy: 24)
 }
 
-/// Where a newly added image goes: the middle of the largest gap between existing hours,
-/// counting the gap that wraps past midnight. None yet → 07:00. On a tie the daytime gap wins,
-/// so a third image next to 07:00 and 19:00 lands at 13:00, not 01:00.
-func nextFreeHour(_ hours: [Double]) -> Double {
-    let sorted = hours.sorted()
-    guard let first = sorted.first else { return 7 }
-    var best = (start: sorted.last!, length: first + 24 - sorted.last!)   // the wrap-around gap
-    for (a, b) in zip(sorted, sorted.dropFirst()) where b - a >= best.length {
-        best = (a, b - a)
+/// Where a newly added image goes: two hours after the latest one, skipping hours already taken.
+/// None yet → 07:00. The user moves it from there.
+func nextHour(after hours: [Double]) -> Double {
+    guard var hour = hours.max() else { return 7 }
+    for _ in 0..<12 {
+        hour = snap(hour + 2)
+        if !hours.contains(where: { clockDistance($0, hour) < 1.0 / 60 }) { break }
     }
-    return snap(best.start + best.length / 2)
+    return hour
 }
 
 /// Distance on a 24-hour clock, so 23:00 and 01:00 are 2 hours apart.
@@ -37,4 +35,12 @@ func nearest(to target: Double, in hours: [Double]) -> Int {
 func clockText(_ hour: Double) -> String {
     let minutes = Int((hour * 60).rounded()) % (24 * 60)
     return String(format: "%02d:%02d", minutes / 60, minutes % 60)
+}
+
+/// Indices with a later one in `drawOrder` closer than `gap`: something is drawn over them.
+func covered(_ hours: [Double], drawOrder: [Int], gap: Double) -> Set<Int> {
+    // ponytail: O(n²), fine for a handful of images.
+    Set(drawOrder.indices.filter { n in
+        drawOrder[(n + 1)...].contains { abs(hours[$0] - hours[drawOrder[n]]) < gap }
+    }.map { drawOrder[$0] })
 }

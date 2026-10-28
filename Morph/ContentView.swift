@@ -114,7 +114,7 @@ struct Tip: Identifiable, Equatable {
     static let cycle = Tip(
         image: "CycleTip",
         title: "Işık Döngüsü",
-        detail: "Aynı karenin gün içindeki hâllerini ekleyin. Her görsel seçtiğiniz saatte ekrana gelir ve bir sonrakine kadar kalır. Saatleri çizelgede sürükleyin, çizelgeye tıklayın ya da yazın.",
+        detail: "Aynı karenin gün içindeki hâllerini ekleyin. Her görsel seçtiğiniz saatte ekrana gelir ve bir sonrakine kadar kalır. Saatleri çizelgede sürükleyin, çizelgeye tıklayın ya da karttaki saate tıklayın.",
         button: "Anladım")
 }
 
@@ -125,7 +125,7 @@ struct ContentView: View {
     var body: some View {
         if let current = kind {
             // Not Binding($kind): that traps if a closing sheet still reads it after "Yeni" clears kind.
-            // TIPS opens once per pick from the welcome screen; switching kinds in the editor doesn't.
+            // TIPS opens on the first pick of each kind (ever); switching kinds in the editor doesn't.
             Editor(kind: Binding(get: { kind ?? current }, set: { kind = $0 }), tips: current) { kind = nil }
         } else {
             WelcomeView { kind = $0 }
@@ -153,7 +153,8 @@ private struct Editor: View {
     @State private var error: String?
     @State private var creating = false
     @State private var tips: Tip?
-    @State private var cycleTipShown = false
+    // Tip ids seen on this Mac: each card opens by itself once, ? brings it back any time.
+    @AppStorage("seenTips") private var seenTips = ""
     private let initialTips: Tip?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
@@ -192,8 +193,9 @@ private struct Editor: View {
             Spacer(minLength: 0)
             if kind == .time {
                 if isCycle {
-                    DayBar(stops: frames.enumerated().map { i, frame in
-                               BarStop(name: "\(i + 1). görsel", image: frame.photo.image, hour: frame.hour, tint: dayTint)
+                    let numbers = Dictionary(uniqueKeysWithValues: frames.sorted { $0.hour < $1.hour }.enumerated().map { ($1.id, $0 + 1) })
+                    DayBar(stops: frames.map { frame in
+                               BarStop(name: "\(numbers[frame.id]!). görsel", image: frame.photo.image, hour: frame.hour, tint: dayTint)
                            },
                            selected: frames.firstIndex { $0.id == selected },
                            onSelect: { selected = frames[$0].id },
@@ -282,7 +284,7 @@ private struct Editor: View {
         // First switch to Işık Döngüsü starts from the morning/evening pair, if there is one.
         .onChange(of: cycle) {
             // The first switch to Işık Döngüsü explains it; ? brings it back later.
-            if cycle, !cycleTipShown { tips = .cycle; cycleTipShown = true }
+            if cycle, !seen(.cycle) { tips = .cycle }
             guard cycle, frames.isEmpty else { return }
             frames = [light.map { Frame(photo: $0, hour: morningHour) }, dark.map { Frame(photo: $0, hour: eveningHour) }].compactMap { $0 }
             selected = frames.first?.id
@@ -301,7 +303,8 @@ private struct Editor: View {
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: tips)
         // Set after the first frame, not in init, so the card animates in instead of just being there.
-        .onAppear { tips = initialTips }
+        .onAppear { if let initialTips, !seen(initialTips) { tips = initialTips } }
+        .onChange(of: tips) { if let tips, !seen(tips) { seenTips += tips.id + "," } }
         .sheet(isPresented: Binding(get: { output != nil }, set: { if !$0 { output = nil } })) {
             if let output {
                 ResultSheet(url: output, kind: kind, onNew: onHome)
@@ -310,6 +313,8 @@ private struct Editor: View {
     }
 
     private var isCycle: Bool { kind == .time && cycle }
+
+    private func seen(_ tip: Tip) -> Bool { seenTips.split(separator: ",").contains(Substring(tip.id)) }
 
     /// Why Işık Döngüsü can't build yet, shown next to Oluştur.
     private var cycleProblem: String? {
@@ -476,33 +481,35 @@ private struct FrameStrip: View {
     @Binding var selected: Frame.ID?
     @State private var loading = 0
     @State private var targeted = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Shown by hour, so the row reads as the day goes. `frames` itself keeps its order: the day
+    /// bar's handles are indexed into it, and reordering mid-drag would hand the drag to another image.
+    private var ordered: [Frame] { frames.sorted { $0.hour < $1.hour } }
 
     private let tileWidth: CGFloat = 132
     private var tileHeight: CGFloat { (tileWidth / screenAspect).rounded() }
 
-    /// The selected frame's hour as a Date for the DatePicker; writes back snapped to 5 minutes.
-    private var selectedTime: Binding<Date>? {
-        guard let index = frames.firstIndex(where: { $0.id == selected }) else { return nil }
-        return Binding {
-            Calendar.current.startOfDay(for: .now).addingTimeInterval(frames[index].hour * 3600)
-        } set: { date in
-            let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-            frames[index].hour = snap(Double(parts.hour ?? 0) + Double(parts.minute ?? 0) / 60)
+    /// A frame's hour by id, so the binding survives the strip reordering under it.
+    private func hour(of id: Frame.ID) -> Binding<Double> {
+        Binding { frames.first { $0.id == id }?.hour ?? 0 } set: { hour in
+            if let index = frames.firstIndex(where: { $0.id == id }) { frames[index].hour = hour }
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        ScrollViewReader { scroller in
             ScrollView(.horizontal) {
                 HStack(spacing: 12) {
-                    ForEach(Array(frames.enumerated()), id: \.element.id) { i, frame in
+                    ForEach(Array(ordered.enumerated()), id: \.element.id) { i, frame in
                         FrameTile(number: i + 1, frame: frame, selected: frame.id == selected,
-                                  width: tileWidth, height: tileHeight) {
+                                  width: tileWidth, height: tileHeight, hour: hour(of: frame.id)) {
                             selected = frame.id
                         } onRemove: {
                             frames.removeAll { $0.id == frame.id }
-                            if selected == frame.id { selected = frames.last?.id }
+                            if selected == frame.id { selected = ordered.last?.id }
                         }
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
                     }
                     ForEach(0..<loading, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: 10)
@@ -513,26 +520,15 @@ private struct FrameStrip: View {
                     addTile
                 }
                 .padding(4)
+                // A new hour slides the tile to its place; the others make room.
+                .animation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0.15), value: ordered.map(\.id))
             }
             .scrollIndicators(.automatic)
-
-            HStack(spacing: 8) {
-                if let time = selectedTime, let index = frames.firstIndex(where: { $0.id == selected }) {
-                    Text("\(index + 1). görsel").font(.callout.weight(.semibold))
-                    DatePicker("Saat", selection: time, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                        .datePickerStyle(.field)
-                        .fixedSize()
-                    Text("Saati yazın ya da çizelgede bir yere tıklayın, tutamacı sürükleyin.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Görselleri ekleyin; her birinin saatini çizelgeden seçin.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+            // Keep the selected tile in view when it moves or is added past the edge.
+            .onChange(of: ordered.map(\.id)) {
+                guard let selected else { return }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { scroller.scrollTo(selected) }
             }
-            .frame(height: 22)
         }
     }
 
@@ -568,7 +564,7 @@ private struct FrameStrip: View {
         _ = add(panel.urls)
     }
 
-    /// Each new image goes into the middle of the largest free gap and becomes the selection.
+    /// Each new image goes two hours after the latest one and becomes the selection.
     private func add(_ urls: [URL]) -> Bool {
         let images = urls.filter(isImageFile)
         guard !images.isEmpty else { return false }
@@ -579,7 +575,7 @@ private struct FrameStrip: View {
                 let photo = await loadPhoto(url)
                 loading -= 1
                 guard let photo else { continue }
-                let frame = Frame(photo: photo, hour: nextFreeHour(frames.map(\.hour)))
+                let frame = Frame(photo: photo, hour: nextHour(after: frames.map(\.hour)))
                 frames.append(frame)
                 selected = frame.id
             }
@@ -594,9 +590,11 @@ private struct FrameTile: View {
     let selected: Bool
     let width: CGFloat
     let height: CGFloat
+    let hour: Binding<Double>
     let onSelect: () -> Void
     let onRemove: () -> Void
     @State private var hovering = false
+    @State private var editingTime = false
 
     var body: some View {
         Button(action: onSelect) {
@@ -617,14 +615,25 @@ private struct FrameTile: View {
                 .allowsHitTesting(false)
         }
         .overlay(alignment: .bottomTrailing) {
-            Text(clockText(frame.hour))
-                .font(.caption.weight(.semibold))
-                .monospacedDigit()
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(.ultraThinMaterial, in: Capsule())
-                .padding(6)
-                .allowsHitTesting(false)
+            Button {
+                onSelect()
+                editingTime = true
+            } label: {
+                Text(clockText(frame.hour))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(6)
+            .help("Saati değiştir")
+            .accessibilityLabel("\(number). görselin saati, \(clockText(frame.hour))")
+            .popover(isPresented: $editingTime, arrowEdge: .bottom) {
+                TimeEditor(hour: hour) { editingTime = false }
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: 10)
@@ -649,6 +658,7 @@ private struct FrameTile: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(number). görsel, \(clockText(frame.hour))")
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityAction(named: "Saati değiştir") { editingTime = true }
         .accessibilityAction(named: "Kaldır", onRemove)
     }
 }
@@ -694,8 +704,17 @@ private struct DayBar: View {
     var selected: Int? = nil
     var onSelect: (Int) -> Void = { _ in }
     var onMove: ((Int, Double) -> Void)? = nil
+    @State private var barWidth: CGFloat = 720
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var editable: Bool { onMove != nil }
+
+    /// Drawn by hour, the selected one last so it's on top.
+    private var drawOrder: [Int] {
+        stops.indices.sorted { ($0 == selected ? 1 : 0, stops[$0].hour) < ($1 == selected ? 1 : 0, stops[$1].hour) }
+    }
+    /// Handles with another drawn over them (closer than a handle's 44pt): dimmed, so the front one reads.
+    private var dimmed: Set<Int> { covered(stops.map(\.hour), drawOrder: drawOrder, gap: 44 / max(barWidth, 1) * 24) }
 
     /// (stop index, start hour, end hour) left to right. Before the earliest stop macOS shows the
     /// latest one, so that stop also fills 00:00 up to the first hour.
@@ -766,7 +785,7 @@ private struct DayBar: View {
                     .allowsHitTesting(editable)
                     .overlay(alignment: .leading) {
                         Capsule()
-                            .fill(.white)
+                            .fill(.yellow)  // white vanished on a bright photo or the near-white morning span
                             .frame(width: 3, height: 32)
                             .shadow(radius: 1.5)
                             .offset(x: width * now / 24 - 1.5)
@@ -802,8 +821,7 @@ private struct DayBar: View {
                 .frame(width: width)
                 .position(x: width / 2, y: 38)
                 .accessibilityHidden(true)
-                // Selected last, so it's drawn on top where handles overlap.
-                ForEach(stops.indices.sorted { a, _ in a != selected }, id: \.self) { i in
+                ForEach(drawOrder, id: \.self) { i in
                     let isSelected = editable && i == selected
                     VStack(spacing: 3) {
                         Circle()
@@ -820,6 +838,7 @@ private struct DayBar: View {
                             .fixedSize()
                     }
                     .frame(width: 44)
+                    .opacity(dimmed.contains(i) ? 0.3 : 1)
                     .contentShape(Rectangle())
                     .position(x: width * stops[i].hour / 24, y: 24)
                     .allowsHitTesting(editable)
@@ -841,7 +860,9 @@ private struct DayBar: View {
                 }
             }
             .coordinateSpace(name: "handles")
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: dimmed)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
         .frame(height: 48)
     }
 
@@ -860,5 +881,129 @@ private struct DayBar: View {
             "\(stops[span.stop].name) görseli \(clockText(span.start))'dan itibaren"
         }
         return "Saat \(clockText(now)). " + parts.joined(separator: ", ")
+    }
+}
+
+/// iPhone-alarm style hour and minute wheels. macOS has no wheel DatePicker, so: two snapping
+/// scroll columns; scroll, or click a number. Minutes go in 5s, like the rest of the editor.
+/// The hour wheels plus Vazgeç / Tamam: the tile's hour only changes on Tamam, which lights up
+/// green once the wheels show a different time.
+private struct TimeEditor: View {
+    @Binding var hour: Double
+    let close: () -> Void
+    @State private var draft: Double
+
+    init(hour: Binding<Double>, close: @escaping () -> Void) {
+        _hour = hour
+        self.close = close
+        _draft = State(initialValue: hour.wrappedValue)
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            TimeWheel(hour: $draft)
+            HStack {
+                Button("Vazgeç", action: close)
+                    .keyboardShortcut(.cancelAction)
+                Button("Tamam") {
+                    hour = draft
+                    close()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .disabled(draft == hour)
+            }
+        }
+        .padding(12)
+    }
+}
+
+// ponytail: the wheels stop at the ends instead of looping like iOS; loop if it's missed.
+private struct TimeWheel: View {
+    @Binding var hour: Double
+
+    private var minutes: Int { Int((hour * 60).rounded()) % (24 * 60) }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            WheelColumn(values: Array(0..<24), selection: Binding {
+                minutes / 60
+            } set: { hour = Double($0) + Double(minutes % 60) / 60 })
+            Text(":").font(.title2.weight(.semibold))
+            WheelColumn(values: Array(stride(from: 0, to: 60, by: 5)), selection: Binding {
+                minutes % 60
+            } set: { hour = Double(minutes / 60) + Double($0) / 60 })
+        }
+        .padding(.horizontal, 8)
+        // The selection band across both columns.
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(0.08))
+                .frame(height: WheelColumn.rowHeight)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Saat")
+    }
+}
+
+private struct WheelColumn: View {
+    static let rowHeight: CGFloat = 32
+    let values: [Int]
+    @Binding var selection: Int
+    @State private var position: Int?
+    @State private var dragStart: Int?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Grab and drag: one row per 32pt, always landing on a value.
+    private var drag: some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { drag in
+                let start = dragStart ?? values.firstIndex(of: position ?? selection) ?? 0
+                dragStart = start
+                let index = min(max(start - Int((drag.translation.height / Self.rowHeight).rounded()), 0), values.count - 1)
+                if values[index] != position {
+                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.15)) { position = values[index] }
+                }
+            }
+            .onEnded { _ in dragStart = nil }
+    }
+
+    var body: some View {
+        ScrollView(.vertical) {
+            LazyVStack(spacing: 0) {
+                ForEach(values, id: \.self) { value in
+                    Text(String(format: "%02d", value))
+                        .font(.title2.monospacedDigit().weight(value == position ? .semibold : .regular))
+                        .foregroundStyle(value == position ? .primary : .secondary)
+                        .frame(width: 52, height: Self.rowHeight)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(reduceMotion ? nil : .snappy) { position = value }
+                        }
+                }
+            }
+            .scrollTargetLayout()
+        }
+        // Two rows of air above and below, so the first and last values can reach the middle.
+        .contentMargins(.vertical, Self.rowHeight * 2, for: .scrollContent)
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $position, anchor: .center)
+        .scrollIndicators(.never)
+        .gesture(drag)
+        .frame(width: 52, height: Self.rowHeight * 5)
+        // Fade out toward the edges, like a wheel turning away.
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.35),
+                                     .init(color: .black, location: 0.65), .init(color: .clear, location: 1)],
+                             startPoint: .top, endPoint: .bottom))
+        .onAppear { position = selection }
+        .onChange(of: position) {
+            if let position, position != selection { selection = position }
+        }
+        .accessibilityRepresentation {
+            Picker("", selection: $selection) {
+                ForEach(values, id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
+            }
+        }
     }
 }

@@ -85,11 +85,13 @@ Diğer modlar (v1 dışı):
 - [x] Sonuç ekranı: iki görsel yan yana (dosyanın kendisinden, arka planda),
       "Yeni" onay ister
 - [x] Saat türüne **Işık Döngüsü** modu (Sabah / Akşam ↔ Işık Döngüsü): 2..N görsel,
-      her biri kendi saatinde. Şeritte "+" ile çoklu ekleme (yeni görsel en büyük boş
-      aralığın ortasına), timeline'da tutamaç sürükleme (5 dk adım), çubuğa tıklayınca
-      seçili görsel oraya, saat alanından elle yazma. Açık/koyu (`ap`) = 12:00'ye ve
+      her biri kendi saatinde. Şeritte "+" ile çoklu ekleme (yeni görsel en geç saatin
+      2 saat sonrasına; şerit saate göre sıralı, kartlar animasyonla yer değiştirir), timeline'da tutamaç sürükleme (5 dk adım), çubuğa tıklayınca
+      seçili görsel oraya, karttaki saate tıklayınca iPhone alarmı gibi saat/dakika
+      tekerleği (kaydır, sürükle ya da tıkla; Vazgeç / yeşil Tamam). Çizelgede üst üste
+      binen tutamaçlarda öndeki net, arkadakiler soluk; tek satır. Açık/koyu (`ap`) = 12:00'ye ve
       00:00'a en yakın görseller. Kendi TIPS kartı (`CycleTip`, "Anladım"): moda ilk
-      geçişte ve ? ile açılır; TIPS kartları artık `Tip` değeri (görsel/başlık/metin/buton). Dosyada görseller saate göre sıralı. Saf yardımcılar
+      geçişte ve ? ile açılır; TIPS kartları artık `Tip` değeri (görsel/başlık/metin/buton). Her TIPS kartı kendiliğinden yalnız bir kez açılır (`@AppStorage("seenTips")`), ? ile her zaman. Dosyada görseller saate göre sıralı. Saf yardımcılar
       `Morph/Cycle.swift`, self-check'te.
 - [ ] 07:00 ve 19:00 geçişlerini gözle doğrula
 - [ ] Işık Döngüsü: 4+ görselli dosya masaüstünde saatinde geçiyor mu

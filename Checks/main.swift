@@ -58,10 +58,14 @@ assert(cti.map { $0["i"] as! Int } == [0, 1, 2, 3, 0], "cycle ti: \(cti)")
 assert(cycle["ap"] as! [String: Int] == ["l": 2, "d": 0])
 
 // Helpers.
-assert(nextFreeHour([]) == 7)
-assert(nextFreeHour([7]) == 19)
-assert(nextFreeHour([7, 19]) == 13)                  // tie (12h each way): daytime gap wins
-assert(nextFreeHour([6, 9, 12]) == 21)               // largest gap wraps past midnight: 12 → 6
+assert(nextHour(after: []) == 7)
+assert(nextHour(after: [7]) == 9)
+assert(nextHour(after: [7, 19, 3]) == 21)            // after the latest, not the last added
+assert(nextHour(after: [23.5]) == 1.5)               // wraps past midnight
+assert(nextHour(after: [21, 23, 1]) == 3)            // 01:00 is taken, so 03:00
+assert(covered([7, 7.33, 8], drawOrder: [0, 2, 1], gap: 0.7) == [0, 2])   // 07:20 (selected) on top of both
+assert(covered([7, 7.33, 8], drawOrder: [0, 2, 1], gap: 0.5) == [0])
+assert(covered([1, 12, 23], drawOrder: [0, 1, 2], gap: 1) == [])
 assert(snap(23.98) == 0)                             // 23:59 rounds to 24:00 = 00:00
 assert(snap(6.53) == 6.5)                            // 06:32 → 06:30
 assert(clockDistance(23, 1) == 2)
